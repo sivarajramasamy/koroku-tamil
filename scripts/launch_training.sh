@@ -375,25 +375,57 @@ run_stage_1() {
 
 run_stage_2() {
     log "=== STAGE 2: train_second.py ==="
-    # Stage 1 output check (filename varies across forks; check both common patterns).
-    local s1_ckpt_dir="$RUN_DIR/StyleTTS2/logs/kokoro-marathi"
-    local found=""
-    for candidate in \
-        "$s1_ckpt_dir/first_stage.pth" \
-        "$s1_ckpt_dir/first_stage_final.pth"; do
-        if [[ -f "$candidate" ]]; then
-            found="$candidate"
-            break
+
+    # Two init modes for Stage 2:
+    #   (a) From a Stage-1 ckpt — the normal flow after a fresh STAGE=1 run.
+    #       Looks for first_stage.pth in logs/kokoro-marathi/.
+    #   (b) From a previous Stage-2 ckpt (Stage 2.5 / continuation) — config
+    #       sets second_stage_load_pretrained: true and pretrained_model
+    #       points at e.g. ../training/kokoro_mr_v0_1_final.pth.
+    # We sniff the config to decide which check to enforce.
+    local cfg_path="$RUN_DIR/StyleTTS2/$CONFIG"
+    if [[ ! -f "$cfg_path" ]]; then
+        # Some configs are passed with a path relative to repo root, not StyleTTS2/.
+        cfg_path="$RUN_DIR/${CONFIG#../}"
+    fi
+    [[ -f "$cfg_path" ]] || die "config not found at $cfg_path (CONFIG='$CONFIG')"
+
+    local load_pretrained
+    load_pretrained=$(awk '/^second_stage_load_pretrained:/ {print $2; exit}' "$cfg_path" | tr -d '"')
+
+    if [[ "$load_pretrained" == "true" ]]; then
+        # Mode (b): Stage 2.5 — init from pretrained_model directly.
+        local pretrained_rel
+        pretrained_rel=$(awk '/^pretrained_model:/ {print $2; exit}' "$cfg_path" | tr -d '"')
+        # Path in config is relative to StyleTTS2/ (e.g. "../training/...").
+        local pretrained_full="$RUN_DIR/StyleTTS2/$pretrained_rel"
+        [[ -f "$pretrained_full" ]] || die \
+            "Stage 2.5 init: pretrained_model not found at $pretrained_full — \
+copy your previous Stage-2 final ckpt there before launching."
+        local pre_bytes
+        pre_bytes=$(stat -c%s "$pretrained_full" 2>/dev/null || stat -f%z "$pretrained_full")
+        log "Stage 2.5 init: $pretrained_full ($((pre_bytes / 1024 / 1024)) MB)"
+    else
+        # Mode (a): standard Stage 2 — needs Stage-1 output.
+        local s1_ckpt_dir="$RUN_DIR/StyleTTS2/logs/kokoro-marathi"
+        local found=""
+        for candidate in \
+            "$s1_ckpt_dir/first_stage.pth" \
+            "$s1_ckpt_dir/first_stage_final.pth"; do
+            if [[ -f "$candidate" ]]; then
+                found="$candidate"
+                break
+            fi
+        done
+        if [[ -z "$found" ]]; then
+            found=$(ls -1t "$s1_ckpt_dir"/first_stage_epoch_*.pth 2>/dev/null | head -n1 || true)
         fi
-    done
-    if [[ -z "$found" ]]; then
-        # Also accept any first_stage_epoch_*.pth.
-        found=$(ls -1t "$s1_ckpt_dir"/first_stage_epoch_*.pth 2>/dev/null | head -n1 || true)
+        if [[ -z "$found" ]]; then
+            die "Stage 1 checkpoint not found in $s1_ckpt_dir — run STAGE=1 first \
+(or set second_stage_load_pretrained: true in the config to init from a prior Stage-2 ckpt)"
+        fi
+        log "found Stage 1 checkpoint: $found"
     fi
-    if [[ -z "$found" ]]; then
-        die "Stage 1 checkpoint not found in $s1_ckpt_dir — run STAGE=1 first"
-    fi
-    log "found Stage 1 checkpoint: $found"
 
     export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
     cd "$RUN_DIR/StyleTTS2"

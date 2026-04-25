@@ -1,13 +1,15 @@
 """merge_manifests.py — combine Marathi manifest fragments into train/val lists
 ===============================================================================
-Reads two manifest fragments produced by the per-source prep scripts
-(``rasa_mr.txt`` and ``indicvoices_r_mr.txt``) and writes the final flat
-``train_list.txt`` / ``val_list.txt`` files that the StyleTTS2 / Kokoro
-fine-tuning scripts expect.
+Reads manifest fragments produced by the per-source prep scripts and writes
+the flat ``train_list.txt`` / ``val_list.txt`` files that the StyleTTS2 /
+Kokoro fine-tuning scripts expect. Each known fragment is optional — missing
+ones produce a warning, not a crash, so you can run with whatever subset of
+the corpus has been prepped so far.
 
 Layout (all paths relative to the bol-tts-marathi/ repo root):
-  training/rasa_mr.txt              input fragment (path|ipa|speaker)
-  training/indicvoices_r_mr.txt     input fragment (path|ipa|speaker)
+  training/rasa_mr.txt              input fragment (path|ipa|speaker) [v0.1+]
+  training/indicvoices_r_mr.txt     input fragment (path|ipa|speaker) [v0.1+]
+  training/springlab_mr.txt         input fragment (path|ipa|speaker) [v0.2+]
   training/train_list.txt           output (95%, stratified by speaker)
   training/val_list.txt             output (5%,  stratified by speaker)
 
@@ -42,6 +44,7 @@ TRAINING_DIR = REPO_ROOT / "training"
 
 RASA_FRAGMENT = TRAINING_DIR / "rasa_mr.txt"
 INDICVOICES_FRAGMENT = TRAINING_DIR / "indicvoices_r_mr.txt"
+SPRINGLAB_FRAGMENT = TRAINING_DIR / "springlab_mr.txt"
 
 TRAIN_LIST = TRAINING_DIR / "train_list.txt"
 VAL_LIST = TRAINING_DIR / "val_list.txt"
@@ -258,6 +261,7 @@ def main() -> None:
     raw_entries: list[tuple[str, str, str, int]] = []
     raw_entries.extend(_read_fragment(RASA_FRAGMENT))
     raw_entries.extend(_read_fragment(INDICVOICES_FRAGMENT))
+    raw_entries.extend(_read_fragment(SPRINGLAB_FRAGMENT))
 
     if not raw_entries:
         print("ERROR: no fragments found — nothing to merge.")
