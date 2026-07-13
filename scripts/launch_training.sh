@@ -298,33 +298,48 @@ sanity_checks() {
 
     # Manifest line counts — warn only, don't abort.
     local train_lines val_lines
-    if [[ -f "$RUN_DIR/training/train_list.txt" ]]; then
-        train_lines=$(wc -l <"$RUN_DIR/training/train_list.txt" | tr -d ' ')
-    else
-        die "missing $RUN_DIR/training/train_list.txt"
+    local is_sql=0
+    local cfg_path="$RUN_DIR/StyleTTS2/$CONFIG"
+    if [[ ! -f "$cfg_path" ]]; then
+        cfg_path="$RUN_DIR/${CONFIG#../}"
     fi
-    if [[ -f "$RUN_DIR/training/val_list.txt" ]]; then
-        val_lines=$(wc -l <"$RUN_DIR/training/val_list.txt" | tr -d ' ')
-    else
-        die "missing $RUN_DIR/training/val_list.txt"
-    fi
-    log "train_list.txt = $train_lines lines (expected 24676)"
-    log "val_list.txt = $val_lines lines (expected 1134)"
-    if [[ "$train_lines" != "24676" ]]; then
-        warn "train_list.txt line count differs from expected 24676"
-    fi
-    if [[ "$val_lines" != "1134" ]]; then
-        warn "val_list.txt line count differs from expected 1134"
+    if [[ -f "$cfg_path" ]]; then
+        if grep -i -q "SELECT" "$cfg_path"; then
+            is_sql=1
+        fi
     fi
 
-    # WAV counts.
-    local rasa_count iv_count
-    rasa_count=$(find "$RUN_DIR/dataset/audio/rasa" -type f -name '*.wav' 2>/dev/null | wc -l | tr -d ' ')
-    iv_count=$(find "$RUN_DIR/dataset/audio/indicvoices_r" -type f -name '*.wav' 2>/dev/null | wc -l | tr -d ' ')
-    log "rasa wavs = $rasa_count (expected >= 13000)"
-    log "indicvoices_r wavs = $iv_count (expected >= 11000)"
-    (( rasa_count >= 13000 )) || die "rasa wav count too low ($rasa_count)"
-    (( iv_count >= 11000 )) || die "indicvoices_r wav count too low ($iv_count)"
+    if [[ "$is_sql" == "1" ]]; then
+        log "Config is SQL-based (Parquet). Skipping manifest file presence and line/WAV count checks."
+    else
+        if [[ -f "$RUN_DIR/training/train_list.txt" ]]; then
+            train_lines=$(wc -l <"$RUN_DIR/training/train_list.txt" | tr -d ' ')
+        else
+            die "missing $RUN_DIR/training/train_list.txt"
+        fi
+        if [[ -f "$RUN_DIR/training/val_list.txt" ]]; then
+            val_lines=$(wc -l <"$RUN_DIR/training/val_list.txt" | tr -d ' ')
+        else
+            die "missing $RUN_DIR/training/val_list.txt"
+        fi
+        log "train_list.txt = $train_lines lines (expected 24676)"
+        log "val_list.txt = $val_lines lines (expected 1134)"
+        if [[ "$train_lines" != "24676" ]]; then
+            warn "train_list.txt line count differs from expected 24676"
+        fi
+        if [[ "$val_lines" != "1134" ]]; then
+            warn "val_list.txt line count differs from expected 1134"
+        fi
+
+        # WAV counts.
+        local rasa_count iv_count
+        rasa_count=$(find "$RUN_DIR/dataset/audio/rasa" -type f -name '*.wav' 2>/dev/null | wc -l | tr -d ' ')
+        iv_count=$(find "$RUN_DIR/dataset/audio/indicvoices_r" -type f -name '*.wav' 2>/dev/null | wc -l | tr -d ' ')
+        log "rasa wavs = $rasa_count (expected >= 13000)"
+        log "indicvoices_r wavs = $iv_count (expected >= 11000)"
+        (( rasa_count >= 13000 )) || die "rasa wav count too low ($rasa_count)"
+        (( iv_count >= 11000 )) || die "indicvoices_r wav count too low ($iv_count)"
+    fi
 
     # Test-import kokoro_symbols from the StyleTTS2 cwd (that's how text_utils resolves it).
     log "test-importing kokoro_symbols from StyleTTS2/"
