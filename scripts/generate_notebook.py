@@ -35,7 +35,7 @@ notebook = {
     "# 3. Clone repository along with training submodules\n",
     "!git clone https://github.com/sivarajramasamy/koroku-tamil.git\n",
     "%cd koroku-tamil\n",
-    "!git clone https://github.com/semidark/kokoro.git kokoro\n",
+    "!git submodule update --init --recursive\n",
     "\n",
     "# 4. Install training framework requirements\n",
     "!pip install soundfile torchaudio munch torch pydub pyyaml librosa nltk matplotlib accelerate transformers einops einops-exts tqdm typing-extensions git+https://github.com/resemble-ai/monotonic_align.git -q\n",
