@@ -83,6 +83,18 @@ pick_newest() {
 CODE_TAR="${CODE_TAR:-$(pick_newest 'bol_training_v*.tar.gz')}"
 DATA_TAR="${DATA_TAR:-$(pick_newest 'bol_data_v*.tar.gz')}"
 
+# Detect if training configuration uses SQL (DuckDB parquet)
+IS_SQL=0
+cfg_path="StyleTTS2/$CONFIG"
+if [[ ! -f "$cfg_path" ]]; then
+    cfg_path="${CONFIG#../}"
+fi
+if [[ -f "$cfg_path" ]]; then
+    if grep -i -q "SELECT" "$cfg_path"; then
+        IS_SQL=1
+    fi
+fi
+
 # ----------------------------------------------------------------------------
 # Step 1: Preflight
 # ----------------------------------------------------------------------------
@@ -90,18 +102,22 @@ DATA_TAR="${DATA_TAR:-$(pick_newest 'bol_data_v*.tar.gz')}"
 preflight() {
     log "=== preflight ==="
 
-    [[ -n "$CODE_TAR" && -f "$CODE_TAR" ]] || die "code tarball not found (CODE_TAR='$CODE_TAR')"
-    [[ -n "$DATA_TAR" && -f "$DATA_TAR" ]] || die "data tarball not found (DATA_TAR='$DATA_TAR')"
-    log "code bundle: $CODE_TAR"
-    log "data bundle: $DATA_TAR"
+    if [[ "$IS_SQL" == "1" ]]; then
+        log "SQL-based training detected. Skipping tarball presence checks."
+    else
+        [[ -n "$CODE_TAR" && -f "$CODE_TAR" ]] || die "code tarball not found (CODE_TAR='$CODE_TAR')"
+        [[ -n "$DATA_TAR" && -f "$DATA_TAR" ]] || die "data tarball not found (DATA_TAR='$DATA_TAR')"
+        log "code bundle: $CODE_TAR"
+        log "data bundle: $DATA_TAR"
+    fi
 
-    if [[ -f CHECKSUMS.txt ]]; then
+    if [[ "$IS_SQL" != "1" && -f CHECKSUMS.txt ]]; then
         log "verifying CHECKSUMS.txt"
         if ! sha256sum -c CHECKSUMS.txt; then
             die "checksum verification failed"
         fi
     else
-        warn "no CHECKSUMS.txt found, skipping integrity check"
+        log "Skipping CHECKSUMS.txt verification (SQL mode or no checksums file)"
     fi
 
     if command -v nvidia-smi >/dev/null 2>&1; then
@@ -218,6 +234,23 @@ extract_bundles() {
     log "=== extract bundles ==="
 
     mkdir -p "$RUN_DIR"
+
+    if [[ "$IS_SQL" == "1" ]]; then
+        log "SQL-based training: copying repository files directly to $RUN_DIR..."
+        if [[ "$(realpath "$RUN_DIR")" != "$(realpath "$(pwd)")" ]]; then
+            cp -R configs "$RUN_DIR"/
+            cp -R StyleTTS2 "$RUN_DIR"/
+            cp -R kokoro "$RUN_DIR"/
+            mkdir -p "$RUN_DIR"/training
+            if [[ -f training/kokoro_base.pth ]]; then
+                cp training/kokoro_base.pth "$RUN_DIR"/training/
+            fi
+            if [[ -f training/OOD_texts.txt ]]; then
+                cp training/OOD_texts.txt "$RUN_DIR"/training/
+            fi
+        fi
+        return 0
+    fi
 
     # Code bundle: strip the top-level bol_training_v5/ dir so contents land directly in $RUN_DIR.
     # --no-same-owner prevents chown-fail on Mac-built tarballs (uid=501).
