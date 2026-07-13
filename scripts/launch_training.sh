@@ -90,9 +90,14 @@ if [[ ! -f "$cfg_path" ]]; then
     cfg_path="${CONFIG#../}"
 fi
 if [[ -f "$cfg_path" ]]; then
-    if grep -i -q "SELECT" "$cfg_path"; then
+    if grep -i -q -E "SELECT|WITH" "$cfg_path"; then
         IS_SQL=1
     fi
+fi
+
+if [[ "$IS_SQL" == "1" ]]; then
+    export PYTHONPATH="$(pwd)/training/patches:$PYTHONPATH"
+    log "SQL mode: PYTHONPATH override enabled (pointing to $(pwd)/training/patches)"
 fi
 
 # ----------------------------------------------------------------------------
