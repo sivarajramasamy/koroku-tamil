@@ -215,7 +215,7 @@ install_python_deps() {
         pandas \
         einops \
         einops-exts \
-        'misaki[en]>=0.9.4' \
+        'misaki[en]<0.9.0' \
         click \
         pydub \
         typing-extensions \

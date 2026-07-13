@@ -39,7 +39,7 @@ notebook = {
     "\n",
     "# 4. Install training framework requirements\n",
     "!pip install soundfile torchaudio munch torch pydub pyyaml librosa nltk matplotlib accelerate transformers einops einops-exts tqdm typing-extensions git+https://github.com/resemble-ai/monotonic_align.git -q\n",
-    "!pip install duckdb pyarrow \"misaki[en]>=0.9.4\" -q\n",
+    "!pip install duckdb pyarrow \"misaki[en]<0.9.0\" -q\n",
     "\n",
     "print(\"Environment setup complete.\")"
    ]
