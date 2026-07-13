@@ -1,3 +1,7 @@
+[submodule "StyleTTS2"]
+	path = StyleTTS2
+	url = https://github.com/semidark/StyleTTS2
 [submodule "kokoro"]
 	path = kokoro
 	url = https://github.com/semidark/kokoro
+
