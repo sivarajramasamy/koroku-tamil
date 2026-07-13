@@ -241,13 +241,7 @@ extract_bundles() {
             cp -R configs "$RUN_DIR"/
             cp -R StyleTTS2 "$RUN_DIR"/
             cp -R kokoro "$RUN_DIR"/
-            mkdir -p "$RUN_DIR"/training
-            if [[ -f training/kokoro_base.pth ]]; then
-                cp training/kokoro_base.pth "$RUN_DIR"/training/
-            fi
-            if [[ -f training/OOD_texts.txt ]]; then
-                cp training/OOD_texts.txt "$RUN_DIR"/training/
-            fi
+            cp -R training "$RUN_DIR"/
         fi
         return 0
     fi
