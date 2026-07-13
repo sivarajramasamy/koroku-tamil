@@ -62,8 +62,8 @@ def prepare_test_tokens(text_cleaner):
 def extract_voicepack(model, root_path, device, n_samples=200):
     """Extract a mini voicepack from audio files — mirrors extract_voicepack.py.
 
-    Randomly samples up to n_samples audio waveforms from root_path (either WAV or Parquet),
-    computes mel spectrograms with the same params as meldataset.py, runs them through
+    Randomly samples up to n_samples WAV files from root_path, computes
+    mel spectrograms with the same params as meldataset.py, runs them through
     model.style_encoder and model.predictor_encoder, and averages the results.
 
     Returns:
@@ -80,42 +80,18 @@ def extract_voicepack(model, root_path, device, n_samples=200):
     ).to(device)
     mel_mean, mel_std = -4, 4
 
-    # Check if we should read from parquet/SQL instead of WAV files
-    is_parquet = False
-    if isinstance(root_path, str) and ("*.parquet" in root_path or root_path.endswith(".parquet")):
-        is_parquet = True
+    wav_files = list(Path(root_path).rglob("*.wav"))
+    if not wav_files:
+        logger.warning(f"extract_voicepack: no WAV files found in {root_path}")
+        return None, 0.0, 0.0
 
-    audio_samples = []
-    
-    if is_parquet:
-        try:
-            import duckdb
-            import io
-            con = duckdb.connect()
-            # Randomly fetch up to n_samples audio bytes
-            rows = con.execute(f"SELECT audio.bytes FROM read_parquet('{root_path}') LIMIT {n_samples}").fetchall()
-            for r in rows:
-                if r[0] is not None:
-                    try:
-                        data, file_sr = sf.read(io.BytesIO(r[0]), dtype="float32")
-                        if data.ndim > 1:
-                            data = data.mean(axis=1)
-                        waveform = torch.from_numpy(data).unsqueeze(0)
-                        if file_sr != 24000:
-                            waveform = torchaudio.functional.resample(waveform, file_sr, 24000)
-                        audio_samples.append(waveform.to(device))
-                    except Exception as inner_e:
-                        logger.warning(f"extract_voicepack: skipping parquet sample: {inner_e}")
-        except Exception as e:
-            logger.warning(f"extract_voicepack: failed to load audio from parquet: {e}")
-    else:
-        wav_files = list(Path(root_path).rglob("*.wav"))
-        if not wav_files:
-            logger.warning(f"extract_voicepack: no WAV files found in {root_path}")
-            return None, 0.0, 0.0
+    random.shuffle(wav_files)
+    wav_files = wav_files[:n_samples]
 
-        random.shuffle(wav_files)
-        wav_files = wav_files[:n_samples]
+    acoustic_styles = []
+    prosodic_styles = []
+
+    with torch.no_grad():
         for wav_path in wav_files:
             try:
                 data, file_sr = sf.read(str(wav_path), dtype="float32")
@@ -124,16 +100,7 @@ def extract_voicepack(model, root_path, device, n_samples=200):
                 waveform = torch.from_numpy(data).unsqueeze(0)
                 if file_sr != 24000:
                     waveform = torchaudio.functional.resample(waveform, file_sr, 24000)
-                audio_samples.append(waveform.to(device))
-            except Exception as e:
-                logger.warning(f"extract_voicepack: skipping {wav_path.name}: {e}")
-
-    acoustic_styles = []
-    prosodic_styles = []
-
-    with torch.no_grad():
-        for waveform in audio_samples:
-            try:
+                waveform = waveform.to(device)
                 mel = mel_transform(waveform)
                 mel = (torch.log(1e-5 + mel) - mel_mean) / mel_std
                 if mel.shape[-1] < 80:
@@ -142,7 +109,7 @@ def extract_voicepack(model, root_path, device, n_samples=200):
                 acoustic_styles.append(model.style_encoder(mel_input).cpu())
                 prosodic_styles.append(model.predictor_encoder(mel_input).cpu())
             except Exception as e:
-                logger.warning(f"extract_voicepack: style encoding failed: {e}")
+                logger.warning(f"extract_voicepack: skipping {wav_path.name}: {e}")
 
     if not acoustic_styles:
         logger.warning("extract_voicepack: no valid audio files processed")
