@@ -155,8 +155,8 @@ class FilePathDataset(torch.utils.data.Dataset):
             import io
             if not hasattr(self, "_con") or self._con is None:
                 import duckdb
-                self._con = duckdb.connect(read_only=True)
-                self._con.execute(f"CREATE VIEW dataset_view AS SELECT audio.bytes as audio_bytes, row_number() OVER () - 1 as row_idx FROM read_parquet('{self.root_path}')")
+                self._con = duckdb.connect()
+                self._con.execute(f"CREATE VIEW dataset_view AS SELECT audio.bytes as audio_bytes, row_number() OVER () - 1 as row_idx FROM read_parquet('{self.root_path}') WHERE text IS NOT NULL")
             
             row_idx = int(wave_path)
             res = self._con.execute(f"SELECT audio_bytes FROM dataset_view WHERE row_idx = {row_idx}").fetchone()
