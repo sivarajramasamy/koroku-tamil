@@ -19,8 +19,8 @@ log_dir: "logs/kokoro-tamil"
 # We specify SQL queries that load the transcripts, speaker IDs (gender), and row indices
 # from the local high-speed parquet directory. Every 20th sample (idx % 20 == 0) goes to validation (5%).
 data_params:
-  train_data: "SELECT text, gender as speaker_id, row_number() over() - 1 as idx FROM read_parquet('/content/local_tamil_parquet/*.parquet') WHERE text IS NOT NULL AND idx % 20 != 0"
-  val_data: "SELECT text, gender as speaker_id, row_number() over() - 1 as idx FROM read_parquet('/content/local_tamil_parquet/*.parquet') WHERE text IS NOT NULL AND idx % 20 == 0"
+  train_data: "WITH dataset AS (SELECT text, gender as speaker_id, row_number() over() - 1 as idx FROM read_parquet('/content/local_tamil_parquet/*.parquet') WHERE text IS NOT NULL) SELECT text, speaker_id, idx FROM dataset WHERE idx % 20 != 0"
+  val_data: "WITH dataset AS (SELECT text, gender as speaker_id, row_number() over() - 1 as idx FROM read_parquet('/content/local_tamil_parquet/*.parquet') WHERE text IS NOT NULL) SELECT text, speaker_id, idx FROM dataset WHERE idx % 20 == 0"
   root_path: "/content/local_tamil_parquet/*.parquet"
   OOD_data: "../training/OOD_texts.txt"
   min_length: 50                    # min phoneme sequence length (chars)
