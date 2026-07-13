@@ -33,7 +33,14 @@ def get_data_path_list(train_path=None, val_path=None):
         val_path = "Data/val_list.txt"
 
     # Detect if we should use DuckDB SQL queries
-    if train_path.strip().upper().startswith("SELECT") or val_path.strip().upper().startswith("SELECT"):
+    is_sql_query = False
+    for p in [train_path, val_path]:
+        if p is not None:
+            up_p = p.strip().upper()
+            if up_p.startswith("SELECT") or up_p.startswith("WITH"):
+                is_sql_query = True
+                break
+    if is_sql_query:
         import duckdb
         from misaki.espeak import EspeakG2P
 
