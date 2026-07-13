@@ -1,20 +1,59 @@
 import sys
 import os
+import importlib.util
 
-# Save original path
-sys_path_save = list(sys.path)
+# Load original kokoro_tb_utils module using importlib
 current_dir = os.path.dirname(os.path.abspath(__file__))
-if current_dir in sys.path:
-    sys.path.remove(current_dir)
+repo_root = os.path.dirname(os.path.dirname(current_dir))
+original_tb_path = os.path.join(repo_root, "StyleTTS2", "kokoro_tb_utils.py")
 
-# Import original kokoro_tb_utils module
-import kokoro_tb_utils
-
-# Restore path
-sys.path = sys_path_save
+spec = importlib.util.spec_from_file_location("tb_original", original_tb_path)
+tb_original = importlib.util.module_from_spec(spec)
+sys.path.insert(0, os.path.join(repo_root, "StyleTTS2"))
+spec.loader.exec_module(tb_original)
+sys.path.pop(0)
 
 # Expose everything from the original kokoro_tb_utils module so downstream code is unbroken
-globals().update({k: v for k, v in kokoro_tb_utils.__dict__.items() if not k.startswith('__')})
+globals().update({k: v for k, v in tb_original.__dict__.items() if not k.startswith('__')})
+
+# Override for Tamil test sentences
+TEST_SENTENCES = [
+    "வணக்கம், நீங்கள் எப்படி இருக்கிறீர்கள்?",
+    "தமிழ் மொழி மிகவும் பழமையான மற்றும் அழகான மொழி.",
+    "நாளைக்கு மழை பெய்யும் என்று வானிலை அறிக்கை கூறுகிறது.",
+    "புத்தகம் வாசிப்பது மனிதனின் அறிவை வளர்க்கும்.",
+    "விருந்தினர்களை உபசரிப்பது தமிழர்களின் சிறந்த பண்பு."
+]
+
+def prepare_test_tokens(text_cleaner):
+    """Convert Tamil test sentences to token ID lists via espeak G2P.
+
+    Returns a list of (display_text, token_ids) tuples. Sentences that
+    fail G2P or produce sequences longer than 510 tokens are skipped.
+    """
+    try:
+        from misaki import espeak
+        g2p = espeak.EspeakG2P(language="ta")
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"[SQL Wrapper] Could not load Tamil G2P for TensorBoard inference: {e}")
+        return []
+
+    result = []
+    for text in TEST_SENTENCES:
+        try:
+            g2p_out = g2p(text)
+            ipa = g2p_out[0] if isinstance(g2p_out, tuple) else g2p_out
+            token_ids = text_cleaner(ipa)
+            if not token_ids or len(token_ids) > 510:
+                continue
+            result.append((text, token_ids))
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f'[SQL Wrapper] G2P failed for test sentence "{text[:40]}": {e}')
+    return result
 
 # Override extract_voicepack
 def extract_voicepack(model, root_path, device, n_samples=200):
@@ -25,7 +64,7 @@ def extract_voicepack(model, root_path, device, n_samples=200):
 
     if not is_parquet:
         # Delegate back to the original function
-        return kokoro_tb_utils.extract_voicepack(model, root_path, device, n_samples)
+        return tb_original.extract_voicepack(model, root_path, device, n_samples)
 
     # SQL/parquet extraction
     import duckdb

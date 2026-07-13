@@ -193,6 +193,7 @@ notebook = {
     "import os\n",
     "os.environ[\"BOL_REPO\"] = \"/content/koroku-tamil\"\n",
     "os.environ[\"BOL_KOKORO_BASE\"] = \"/content/koroku-tamil/training/kokoro_base.pth\"\n",
+    "os.environ[\"BOL_KOKORO_CONFIG\"] = \"/content/koroku-tamil/configs/config_ta.json\"\n",
     "!python3 scripts/convert_kokoro_weights.py --force"
    ]
   },
