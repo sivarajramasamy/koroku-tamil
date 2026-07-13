@@ -180,13 +180,19 @@ install_system_deps() {
 install_python_deps() {
     log "=== python deps ==="
 
-    # Force torch 2.6.0 + torchaudio 2.6.0 + torchvision 0.21.0 from cu124 index.
-    # This MUST happen before monotonic_align so it compiles against 2.6 headers/ABI.
-    log "installing torch 2.6.0 / torchaudio 2.6.0 / torchvision 0.21.0 (cu124)"
-    $PY -m pip install --force-reinstall --no-cache-dir \
-        --index-url https://download.pytorch.org/whl/cu124 \
-        torch==2.6.0 torchaudio==2.6.0 torchvision==0.21.0 \
-        || die "torch/torchaudio/torchvision install failed"
+    local installed_ver
+    installed_ver=$($PY -c "import torch; print(torch.__version__)" 2>/dev/null || true)
+    if [[ "$installed_ver" == "2.6.0+cu124" ]]; then
+        log "torch 2.6.0+cu124 is already installed; skipping reinstall"
+    else
+        # Force torch 2.6.0 + torchaudio 2.6.0 + torchvision 0.21.0 from cu124 index.
+        # This MUST happen before monotonic_align so it compiles against 2.6 headers/ABI.
+        log "installing torch 2.6.0 / torchaudio 2.6.0 / torchvision 0.21.0 (cu124)"
+        $PY -m pip install --force-reinstall --no-cache-dir \
+            --index-url https://download.pytorch.org/whl/cu124 \
+            torch==2.6.0 torchaudio==2.6.0 torchvision==0.21.0 \
+            || die "torch/torchaudio/torchvision install failed"
+    fi
 
     log "installing remaining python deps"
     # numpy<2 pinned because some of our deps (librosa/numba chain) aren't numpy-2 clean yet.
@@ -215,13 +221,18 @@ install_python_deps() {
         typing-extensions \
         || die "pip install of core python deps failed"
 
-    # monotonic_align: MUST install AFTER torch 2.6 upgrade. Force reinstall + no cache
-    # so it's rebuilt against the newly installed torch. Skipping this is what caused
-    # "CUDA illegal memory access" last session.
-    log "installing monotonic_align (rebuilt against torch 2.6)"
-    $PY -m pip install --force-reinstall --no-cache-dir \
-        git+https://github.com/resemble-ai/monotonic_align.git \
-        || die "monotonic_align install failed"
+    # Check if monotonic_align is already installed
+    if $PY -c "import monotonic_align" 2>/dev/null; then
+        log "monotonic_align is already installed; skipping compile"
+    else
+        # monotonic_align: MUST install AFTER torch 2.6 upgrade. Force reinstall + no cache
+        # so it's rebuilt against the newly installed torch. Skipping this is what caused
+        # "CUDA illegal memory access" last session.
+        log "installing monotonic_align (rebuilt against torch 2.6)"
+        $PY -m pip install --force-reinstall --no-cache-dir \
+            git+https://github.com/resemble-ai/monotonic_align.git 'numpy<2' \
+            || die "monotonic_align install failed"
+    fi
 
     log "python deps installed"
 }
