@@ -441,7 +441,7 @@ run_stage_1() {
     log "=== STAGE 1: train_first.py ==="
     export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
     cd "$RUN_DIR/StyleTTS2"
-    exec accelerate launch --mixed_precision=bf16 --num_processes=1 \
+    exec accelerate launch --mixed_precision=no --num_processes=1 \
         train_first.py --config_path "$CONFIG"
 }
 
@@ -519,7 +519,7 @@ copy your previous Stage-2 final ckpt there before launching."
 
     export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
     cd "$RUN_DIR/StyleTTS2"
-    exec accelerate launch --mixed_precision=bf16 --num_processes=1 \
+    exec accelerate launch --mixed_precision=no --num_processes=1 \
         train_second.py --config_path "$CONFIG"
 }
 
@@ -527,12 +527,12 @@ run_stage_both() {
     log "=== STAGE both: train_first then train_second ==="
     export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
     ( cd "$RUN_DIR/StyleTTS2" && \
-      accelerate launch --mixed_precision=bf16 --num_processes=1 \
+      accelerate launch --mixed_precision=no --num_processes=1 \
           train_first.py --config_path "$CONFIG" ) \
         || die "Stage 1 training failed"
     log "Stage 1 complete, launching Stage 2"
     ( cd "$RUN_DIR/StyleTTS2" && \
-      accelerate launch --mixed_precision=bf16 --num_processes=1 \
+      accelerate launch --mixed_precision=no --num_processes=1 \
           train_second.py --config_path "$CONFIG" ) \
         || die "Stage 2 training failed"
     log "Stage 2 complete"
