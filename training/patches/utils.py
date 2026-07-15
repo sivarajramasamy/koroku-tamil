@@ -45,31 +45,39 @@ def get_data_path_list(train_path=None, val_path=None):
         # Execute training query
         print(f"[SQL Wrapper] Executing train query: {train_path}")
         train_rows = con.execute(train_path).fetchall()
+        
+        # Execute validation query
+        print(f"[SQL Wrapper] Executing val query: {val_path}")
+        val_rows = con.execute(val_path).fetchall()
+
+        # Build speaker map from names to stringified integer indices dynamically
+        all_rows = train_rows + val_rows
+        unique_speakers = sorted(list(set(row[1] for row in all_rows)))
+        speaker_map = {name: str(idx) for idx, name in enumerate(unique_speakers)}
+        print(f"[SQL Wrapper] Found {len(unique_speakers)} speakers: {speaker_map}")
+
         print(f"[SQL Wrapper] Found {len(train_rows)} training rows. Phonemizing transcripts...")
         train_list = []
         for row in train_rows:
             # We expect the query to return: (text, speaker_id, idx)
-            text, speaker_id, idx = row[0], row[1], row[2]
+            text, speaker_name, idx = row[0], row[1], row[2]
             try:
                 ipa, _ = g2p(text)
             except Exception as e:
                 print(f"[SQL Wrapper] G2P failed for text '{text}': {e}")
                 ipa = text
-            train_list.append(f"{idx}|{ipa}|{speaker_id}")
+            train_list.append(f"{idx}|{ipa}|{speaker_map[speaker_name]}")
 
-        # Execute validation query
-        print(f"[SQL Wrapper] Executing val query: {val_path}")
-        val_rows = con.execute(val_path).fetchall()
         print(f"[SQL Wrapper] Found {len(val_rows)} validation rows. Phonemizing transcripts...")
         val_list = []
         for row in val_rows:
-            text, speaker_id, idx = row[0], row[1], row[2]
+            text, speaker_name, idx = row[0], row[1], row[2]
             try:
                 ipa, _ = g2p(text)
             except Exception as e:
                 print(f"[SQL Wrapper] G2P failed for text '{text}': {e}")
                 ipa = text
-            val_list.append(f"{idx}|{ipa}|{speaker_id}")
+            val_list.append(f"{idx}|{ipa}|{speaker_map[speaker_name]}")
 
         con.close()
         return train_list, val_list

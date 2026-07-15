@@ -26,11 +26,7 @@ class FilePathDataset(meldataset_original.FilePathDataset):
         super().__init__(data_list, root_path, **kwargs)
         
         if self.use_sql:
-            # Build speaker map from names to integers dynamically if needed
-            unique_speakers = sorted(list(set(d[2] for d in self.data_list)))
-            self.speaker_map = {name: idx for idx, name in enumerate(unique_speakers)}
             print(f"[SQL Wrapper] Initialized SQL Dataset with parquet source: {root_path}")
-            print(f"[SQL Wrapper] Mapped speakers: {self.speaker_map}")
 
     def _load_tensor(self, data):
         if not self.use_sql:
@@ -45,8 +41,7 @@ class FilePathDataset(meldataset_original.FilePathDataset):
         import io
 
         wave_path, text, speaker_id = data
-        if hasattr(self, "speaker_map"):
-            speaker_id = self.speaker_map.get(speaker_id, 0)
+        speaker_id = int(speaker_id)
 
         if not hasattr(self, "_con") or self._con is None:
             self._con = duckdb.connect()
