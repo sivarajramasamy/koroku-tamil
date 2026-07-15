@@ -19,9 +19,9 @@ log_dir: "logs/kokoro-tamil"
 # We specify SQL queries that load the transcripts, speaker IDs (gender), and row indices
 # from the local high-speed parquet directory. Every 20th sample (idx % 20 == 0) goes to validation (5%).
 data_params:
-  train_data: "WITH dataset AS (SELECT text, gender as speaker_id, row_number() over() - 1 as idx FROM read_parquet('/content/local_tamil_parquet/*.parquet') WHERE text IS NOT NULL) SELECT text, speaker_id, idx FROM dataset WHERE idx % 20 != 0"
-  val_data: "WITH dataset AS (SELECT text, gender as speaker_id, row_number() over() - 1 as idx FROM read_parquet('/content/local_tamil_parquet/*.parquet') WHERE text IS NOT NULL) SELECT text, speaker_id, idx FROM dataset WHERE idx % 20 == 0"
-  root_path: "/content/local_tamil_parquet/*.parquet"
+  train_data: "WITH dataset AS (SELECT text, gender as speaker_id, row_number() over() - 1 as idx FROM read_parquet('/content/combined_tamil.parquet') WHERE text IS NOT NULL) SELECT text, speaker_id, idx FROM dataset WHERE idx % 20 != 0"
+  val_data: "WITH dataset AS (SELECT text, gender as speaker_id, row_number() over() - 1 as idx FROM read_parquet('/content/combined_tamil.parquet') WHERE text IS NOT NULL) SELECT text, speaker_id, idx FROM dataset WHERE idx % 20 == 0"
+  root_path: "/content/combined_tamil.parquet"
   OOD_data: "../training/OOD_texts.txt"
   min_length: 50                    # min phoneme sequence length (chars)
   num_workers:  2                   # CPU workers for data loading (2 is safer for Colab virtual cores)
