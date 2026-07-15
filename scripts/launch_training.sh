@@ -258,6 +258,13 @@ extract_bundles() {
             cp -R StyleTTS2 "$RUN_DIR"/
             cp -R kokoro "$RUN_DIR"/
             cp -R training "$RUN_DIR"/
+            
+            # Remove original files from the copy so Python falls back to PYTHONPATH overrides
+            rm -f "$RUN_DIR/StyleTTS2/utils.py"
+            rm -f "$RUN_DIR/StyleTTS2/meldataset.py"
+            rm -f "$RUN_DIR/StyleTTS2/kokoro_tb_utils.py"
+        else
+            warn "RUN_DIR matches repository root; PYTHONPATH overrides might not take priority unless original files are renamed."
         fi
         return 0
     fi
