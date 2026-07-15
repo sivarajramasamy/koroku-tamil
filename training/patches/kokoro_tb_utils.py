@@ -135,3 +135,8 @@ def extract_voicepack(model, root_path, device, n_samples=200):
     prosodic_norm = avg_prosodic.norm().item()
 
     return voicepack.to(device), acoustic_norm, prosodic_norm
+
+# Monkey patch the original module so its internal functions use our overridden versions
+tb_original.TEST_SENTENCES = TEST_SENTENCES
+tb_original.prepare_test_tokens = prepare_test_tokens
+tb_original.extract_voicepack = extract_voicepack

@@ -71,3 +71,7 @@ class FilePathDataset(meldataset_original.FilePathDataset):
         text = torch.LongTensor(text)
 
         return wave, text, speaker_id
+
+# Monkey patch the original module so its internal functions (like build_dataloader)
+# use our overridden FilePathDataset subclass!
+meldataset_original.FilePathDataset = FilePathDataset

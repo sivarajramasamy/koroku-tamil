@@ -76,3 +76,6 @@ def get_data_path_list(train_path=None, val_path=None):
 
     # Otherwise fall back to original
     return utils_original.get_data_path_list(train_path, val_path)
+
+# Monkey patch the original module so its internal functions use our overridden version
+utils_original.get_data_path_list = get_data_path_list
