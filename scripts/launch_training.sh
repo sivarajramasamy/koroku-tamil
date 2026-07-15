@@ -266,6 +266,17 @@ extract_bundles() {
         else
             warn "RUN_DIR matches repository root; PYTHONPATH overrides might not take priority unless original files are renamed."
         fi
+
+        # Check if Google Drive is mounted and set up automatic symlink for checkpoints
+        if [[ -d "/content/drive/MyDrive" ]]; then
+            log "Google Drive detected. Linking checkpoint logs to Google Drive..."
+            local drive_logs="/content/drive/MyDrive/Tamil_Kokoro_Checkpoints/logs"
+            mkdir -p "$drive_logs"
+            rm -rf "$RUN_DIR/StyleTTS2/logs"
+            ln -sf "$drive_logs" "$RUN_DIR/StyleTTS2/logs"
+            log "Linked $RUN_DIR/StyleTTS2/logs -> $drive_logs"
+        fi
+
         return 0
     fi
 
