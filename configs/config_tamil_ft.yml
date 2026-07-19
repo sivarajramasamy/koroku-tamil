@@ -1,8 +1,8 @@
 # Tamil Kokoro-82M fine-tune. Adapted for Tamil (SQL-based loading + G2P + data paths).
 batch_size: 2
-epochs: 10
-epochs_1st: 10
-epochs_2nd: 10
+epochs: 3
+epochs_1st: 3
+epochs_2nd: 3
 save_freq: 1
 pretrained_model: "../training/kokoro_base.pth"
 first_stage_path: "first_stage.pth"
