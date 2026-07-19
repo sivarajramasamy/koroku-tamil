@@ -195,7 +195,9 @@ notebook = {
    "metadata": {},
    "outputs": [],
    "source": [
-    "!wget -O training/kokoro_base.pth https://huggingface.co/hexgrad/Kokoro-82M/resolve/main/kokoro-v1_0.pth\n",
+    "%cd /content/koroku-tamil\n",
+    "!mkdir -p /content/koroku-tamil/training\n",
+    "!wget -O /content/koroku-tamil/training/kokoro_base.pth https://huggingface.co/hexgrad/Kokoro-82M/resolve/main/kokoro-v1_0.pth\n",
     "\n",
     "# Convert Kokoro-82M base weights to StyleTTS2 format\n",
     "import os\n",
