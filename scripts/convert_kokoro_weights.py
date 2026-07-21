@@ -34,7 +34,7 @@ REPO_ROOT = Path(os.environ.get("BOL_REPO", Path(__file__).resolve().parents[1])
 SRC_WEIGHTS = Path(
     os.environ.get("BOL_KOKORO_BASE", REPO_ROOT.parent / "Models" / "Kokoro" / "kokoro-v1_0.pth")
 )
-SRC_CONFIG = Path(os.environ.get("BOL_KOKORO_CONFIG", REPO_ROOT / "configs" / "config_mr.json"))
+SRC_CONFIG = Path(os.environ.get("BOL_KOKORO_CONFIG", REPO_ROOT / "configs" / "config_ta.json"))
 TRAINING_DIR = REPO_ROOT / "training"
 OUT_WEIGHTS = TRAINING_DIR / "kokoro_base.pth"
 OUT_CONFIG = TRAINING_DIR / "config.json"
