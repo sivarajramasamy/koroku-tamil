@@ -508,7 +508,10 @@ copy your previous Stage-2 final ckpt there before launching."
         log "Stage 2.5 init: $pretrained_full ($((pre_bytes / 1024 / 1024)) MB)"
     else
         # Mode (a): standard Stage 2 — needs Stage-1 output.
-        local s1_ckpt_dir="$RUN_DIR/StyleTTS2/logs/kokoro-marathi"
+        local log_dir
+        log_dir=$(awk '/^log_dir:/ {print $2; exit}' "$cfg_path" | tr -d '"')
+        log_dir="${log_dir:-logs/kokoro-marathi}"
+        local s1_ckpt_dir="$RUN_DIR/StyleTTS2/$log_dir"
         local found=""
         for candidate in \
             "$s1_ckpt_dir/first_stage.pth" \
