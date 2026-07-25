@@ -1,5 +1,5 @@
 # Tamil Kokoro-82M fine-tune. Adapted for Tamil (SQL-based loading + G2P + data paths).
-batch_size: 2
+batch_size: 1
 epochs: 3
 epochs_1st: 3
 epochs_2nd: 3
@@ -128,8 +128,8 @@ PLBERT_dir: "Utils/PLBERT/"
 
 slmadv_params:
   min_len: 100
-  max_len: 500
-  batch_percentage: 0.5
+  max_len: 300
+  batch_percentage: 0.25
   iter: 10
   thresh: 5
   scale: 0.01
