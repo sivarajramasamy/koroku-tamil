@@ -1,15 +1,12 @@
 import os
 import sys
 import importlib.util
-import torch
-import torchaudio
 
 # Dynamically load the original losses.py directly from the StyleTTS2 submodule path to avoid sys.modules conflicts
 repo_root = os.environ.get("BOL_REPO", "/content/koroku-tamil")
 orig_path = os.path.join(repo_root, "StyleTTS2", "losses.py")
 
 if not os.path.exists(orig_path):
-    # Fallback to local sibling path if run outside colab
     orig_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "StyleTTS2", "losses.py")
 
 spec = importlib.util.spec_from_file_location("losses_original_module", orig_path)
@@ -19,6 +16,12 @@ spec.loader.exec_module(losses_original)
 
 # Copy all names from original losses to keep complete compatibility
 globals().update({k: v for k, v in losses_original.__dict__.items() if not k.startswith('__')})
+
+# Save original methods
+orig_forward = losses_original.WavLMLoss.forward
+orig_generator = losses_original.WavLMLoss.generator
+orig_discriminator = losses_original.WavLMLoss.discriminator
+orig_discriminator_forward = losses_original.WavLMLoss.discriminator_forward
 
 # Helper function to ensure tensor is 2D [B, T]
 def ensure_2d(t):
@@ -30,77 +33,24 @@ def ensure_2d(t):
         return t.squeeze(0)
     return t
 
-# Override WavLMLoss to handle batch_size 1 squeezes
-class WavLMLoss(losses_original.WavLMLoss):
-    def forward(self, wav, y_rec):
-        wav = ensure_2d(wav)
-        y_rec = ensure_2d(y_rec)
-        
-        with torch.no_grad():
-            wav_16 = self.resample(wav)
-            wav_16 = ensure_2d(wav_16)
-            wav_embeddings = self.wavlm(input_values=wav_16, output_hidden_states=True).hidden_states
-            
-        y_rec_16 = self.resample(y_rec)
-        y_rec_16 = ensure_2d(y_rec_16)
-        y_rec_embeddings = self.wavlm(input_values=y_rec_16, output_hidden_states=True).hidden_states
+# Define wrapper methods that sanitize shapes
+def new_forward(self, wav, y_rec):
+    return orig_forward(self, ensure_2d(wav), ensure_2d(y_rec))
 
-        floss = 0
-        for er, eg in zip(wav_embeddings, y_rec_embeddings):
-            floss += torch.mean(torch.abs(er - eg))
-        
-        return floss.mean()
+def new_generator(self, y_rec):
+    return orig_generator(self, ensure_2d(y_rec))
 
-    def generator(self, y_rec):
-        y_rec = ensure_2d(y_rec)
-        y_rec_16 = self.resample(y_rec)
-        y_rec_16 = ensure_2d(y_rec_16)
-        y_rec_embeddings = self.wavlm(input_values=y_rec_16, output_hidden_states=True).hidden_states
-        y_rec_embeddings = torch.stack(y_rec_embeddings, dim=1).transpose(-1, -2).flatten(start_dim=1, end_dim=2)
-        y_df_hat_g = self.wd(y_rec_embeddings)
-        loss_gen = torch.mean((1-y_df_hat_g)**2)
-        
-        return loss_gen
+def new_discriminator(self, wav, y_rec):
+    return orig_discriminator(self, ensure_2d(wav), ensure_2d(y_rec))
 
-    def discriminator(self, wav, y_rec):
-        wav = ensure_2d(wav)
-        y_rec = ensure_2d(y_rec)
-        
-        with torch.no_grad():
-            wav_16 = self.resample(wav)
-            wav_16 = ensure_2d(wav_16)
-            wav_embeddings = self.wavlm(input_values=wav_16, output_hidden_states=True).hidden_states
-            
-            y_rec_16 = self.resample(y_rec)
-            y_rec_16 = ensure_2d(y_rec_16)
-            y_rec_embeddings = self.wavlm(input_values=y_rec_16, output_hidden_states=True).hidden_states
+def new_discriminator_forward(self, wav):
+    return orig_discriminator_forward(self, ensure_2d(wav))
 
-            y_embeddings = torch.stack(wav_embeddings, dim=1).transpose(-1, -2).flatten(start_dim=1, end_dim=2)
-            y_rec_embeddings = torch.stack(y_rec_embeddings, dim=1).transpose(-1, -2).flatten(start_dim=1, end_dim=2)
+# Replace original class methods
+losses_original.WavLMLoss.forward = new_forward
+losses_original.WavLMLoss.generator = new_generator
+losses_original.WavLMLoss.discriminator = new_discriminator
+losses_original.WavLMLoss.discriminator_forward = new_discriminator_forward
 
-        y_d_rs = self.wd(y_embeddings)
-        y_d_gs = self.wd(y_rec_embeddings)
-        
-        y_df_hat_r, y_df_hat_g = y_d_rs, y_d_gs
-        
-        r_loss = torch.mean((1-y_df_hat_r)**2)
-        g_loss = torch.mean((y_df_hat_g)**2)
-        
-        loss_disc_f = r_loss + g_loss
-                        
-        return loss_disc_f.mean()
-
-    def discriminator_forward(self, wav):
-        wav = ensure_2d(wav)
-        with torch.no_grad():
-            wav_16 = self.resample(wav)
-            wav_16 = ensure_2d(wav_16)
-            wav_embeddings = self.wavlm(input_values=wav_16, output_hidden_states=True).hidden_states
-            y_embeddings = torch.stack(wav_embeddings, dim=1).transpose(-1, -2).flatten(start_dim=1, end_dim=2)
-
-        y_d_rs = self.wd(y_embeddings)
-        
-        return y_d_rs
-
-# Monkey patch original class in the loaded module namespace
-losses_original.WavLMLoss = WavLMLoss
+# Ensure local module namespace points to the patched class
+WavLMLoss = losses_original.WavLMLoss
