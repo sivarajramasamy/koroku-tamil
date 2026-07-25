@@ -1,8 +1,8 @@
 # Tamil Kokoro-82M fine-tune. Adapted for Tamil (SQL-based loading + G2P + data paths).
 batch_size: 1
-epochs: 3
-epochs_1st: 3
-epochs_2nd: 3
+epochs: 2
+epochs_1st: 2
+epochs_2nd: 2
 save_freq: 1
 pretrained_model: "../training/kokoro_base.pth"
 first_stage_path: "first_stage.pth"
@@ -106,7 +106,7 @@ loss_params:
   lambda_sty: 0.0                   # style reconstruction (0 = disabled)
   TMA_epoch: 0                      # start alignment from epoch 0 (fine-tuning, not training from scratch)
   diff_epoch: 999                   # effectively disable diffusion training
-  joint_epoch: 3                    # start SLM joint training
+  joint_epoch: 1                    # start SLM joint training
 
 # ── Optimizer ────────────────────────────────────────────────────────────────
 optimizer_params:
