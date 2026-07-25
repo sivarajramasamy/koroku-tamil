@@ -1,19 +1,21 @@
-import sys
 import os
+import sys
+import importlib.util
 import torch
 import torchaudio
 
-# Dynamically import the original losses from the StyleTTS2 folder
-# We must temporarily hide the patches directory from sys.path to load the submodule's losses.py
-patches_dir = os.path.dirname(os.path.abspath(__file__))
-if patches_dir in sys.path:
-    sys.path.remove(patches_dir)
+# Dynamically load the original losses.py directly from the StyleTTS2 submodule path to avoid sys.modules conflicts
+repo_root = os.environ.get("BOL_REPO", "/content/koroku-tamil")
+orig_path = os.path.join(repo_root, "StyleTTS2", "losses.py")
 
-# Import original module
-import losses as losses_original
+if not os.path.exists(orig_path):
+    # Fallback to local sibling path if run outside colab
+    orig_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "StyleTTS2", "losses.py")
 
-# Re-insert patches_dir
-sys.path.insert(0, patches_dir)
+spec = importlib.util.spec_from_file_location("losses_original_module", orig_path)
+losses_original = importlib.util.module_from_spec(spec)
+sys.modules["losses_original_module"] = losses_original
+spec.loader.exec_module(losses_original)
 
 # Copy all names from original losses to keep complete compatibility
 globals().update({k: v for k, v in losses_original.__dict__.items() if not k.startswith('__')})
@@ -100,5 +102,5 @@ class WavLMLoss(losses_original.WavLMLoss):
         
         return y_d_rs
 
-# Monkey patch original module's class
+# Monkey patch original class in the loaded module namespace
 losses_original.WavLMLoss = WavLMLoss
