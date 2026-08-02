@@ -264,6 +264,7 @@ extract_bundles() {
             rm -f "$RUN_DIR/StyleTTS2/meldataset.py"
             rm -f "$RUN_DIR/StyleTTS2/kokoro_tb_utils.py"
             rm -f "$RUN_DIR/StyleTTS2/losses.py"
+            rm -f "$RUN_DIR/StyleTTS2/models.py"
         else
             warn "RUN_DIR matches repository root; PYTHONPATH overrides might not take priority unless original files are renamed."
         fi
