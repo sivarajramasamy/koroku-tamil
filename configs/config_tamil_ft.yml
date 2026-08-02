@@ -4,10 +4,10 @@ epochs: 2
 epochs_1st: 2
 epochs_2nd: 2
 save_freq: 1
-pretrained_model: "../training/kokoro_base.pth"
+pretrained_model: "logs/kokoro-tamil/epoch_2nd_00000.pth"
 first_stage_path: "first_stage.pth"
-load_only_params: true
-second_stage_load_pretrained: false  # false = load from first_stage.pth (recommended)
+load_only_params: false
+second_stage_load_pretrained: true  # false = load from first_stage.pth (recommended)
 # ─────────────────────────────────────────────────────────────────────────────
 # bol-tts Tamil Kokoro-82M Fine-Tuning Config
 # ─────────────────────────────────────────────────────────────────────────────
